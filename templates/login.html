@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Вход - Магазин{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h2>Вход в систему</h2>
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username">Имя пользователя</label>
+                <input type="text" id="username" name="username" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" required class="form-input">
+            </div>
+            <button type="submit" class="btn-primary btn-full">Войти</button>
+        </form>
+        <p class="auth-link">Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+    </div>
+</div>
+{% endblock %}

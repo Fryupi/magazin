@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Магазин{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="{% url 'index' %}" class="logo">🛒 Магазин</a>
+            <div class="nav-links">
+                <a href="{% url 'index' %}">Главная</a>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'profile' %}">Профиль</a>
+                    {% if user.user_type == 'seller' %}
+                        <a href="{% url 'seller_dashboard' %}">Панель продавца</a>
+                    {% endif %}
+                    <span class="balance">💰 {{ user.balance }} ₽</span>
+                    <a href="{% url 'logout' %}" class="btn-logout">Выход</a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn-primary">Вход</a>
+                    <a href="{% url 'register' %}" class="btn-secondary">Регистрация</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p></p>
+        </div>
+    </footer>
+
+    <script src="/static/js/main.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

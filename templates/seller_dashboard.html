@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+
+{% block title %}Панель продавца - Магазин{% endblock %}
+
+{% block content %}
+<div class="seller-dashboard">
+    <h1>Панель продавца</h1>
+    
+    <!-- Статистика -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📦</div>
+            <div class="stat-info">
+                <h3>{{ stats.total_products }}</h3>
+                <p>Товаров в каталоге</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-info">
+                <h3>{{ stats.total_orders }}</h3>
+                <p>Всего заказов</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-info">
+                <h3>{{ stats.active_orders }}</h3>
+                <p>Активных заказов</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+                <h3>{{ stats.completed_orders }}</h3>
+                <p>Завершённых заказов</p>
+            </div>
+        </div>
+        
+        <div class="stat-card stat-card-highlight">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+                <h3>{{ stats.total_revenue|floatformat:2 }} ₽</h3>
+                <p>Общий доход</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">⏱️</div>
+            <div class="stat-info">
+                <h3>{{ stats.pending_revenue|floatformat:2 }} ₽</h3>
+                <p>В обработке</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+                <h3>{{ stats.total_stock }}</h3>
+                <p>Товаров на складе</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">💵</div>
+            <div class="stat-info">
+                <h3>{{ stats.avg_price|floatformat:2 }} ₽</h3>
+                <p>Средняя цена</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Популярные товары -->
+    {% if stats.popular_products %}
+    <div class="dashboard-section">
+        <h2>📈 Популярные товары</h2>
+        <div class="popular-products">
+            {% for product in stats.popular_products %}
+            <div class="popular-product-item">
+                <span class="product-name">{{ product.name }}</span>
+                <span class="product-orders">{{ product.orders_count }} заказов</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Статистика по статусам -->
+    {% if stats.status_stats %}
+    <div class="dashboard-section">
+        <h2>📊 Статистика по статусам</h2>
+        <div class="status-stats">
+            {% for status_name, count in stats.status_stats.items %}
+            <div class="status-stat-item">
+                <span class="status-name">{{ status_name }}</span>
+                <span class="status-count">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h2>Мои товары</h2>
+            <button onclick="showAddProductForm()" class="btn-primary">Добавить товар</button>
+        </div>
+        
+        <div id="addProductForm" class="product-form" style="display: none;">
+            <h3>Добавить новый товар</h3>
+            <form id="productForm" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Название</label>
+                    <input type="text" id="productName" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="productDescription" class="form-input" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Цена</label>
+                    <input type="number" id="productPrice" class="form-input" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Количество</label>
+                    <input type="number" id="productStock" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select id="productCategory" class="form-input" required>
+                        <option value="">Выберите категорию</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Изображение</label>
+                    <input type="file" id="productImage" class="form-input" accept="image/*">
+                </div>
+                <button type="submit" class="btn-primary">Добавить</button>
+                <button type="button" onclick="hideAddProductForm()" class="btn-secondary">Отмена</button>
+            </form>
+        </div>
+        
+        <div class="products-list">
+            {% for product in products %}
+            <div class="product-item">
+                <h3>{{ product.name }}</h3>
+                <p>Цена: {{ product.price }} ₽</p>
+                <p class="{% if product.stock == 0 %}stock-zero{% elif product.stock < 10 %}stock-low{% endif %}">
+                    В наличии: {{ product.stock }} шт.
+                    {% if product.stock == 0 %}
+                        <span class="stock-warning">⚠️ Нет в наличии</span>
+                    {% elif product.stock < 10 %}
+                        <span class="stock-warning">⚠️ Мало</span>
+                    {% endif %}
+                </p>
+                <p>Рейтинг: ⭐ {{ product.average_rating|floatformat:1 }}</p>
+                
+                <!-- Форма пополнения товара -->
+                <form method="post" action="{% url 'add_product_stock' product.id %}" class="add-stock-form">
+                    {% csrf_token %}
+                    <div class="stock-form-group">
+                        <input type="number" name="quantity" min="1" max="10000" 
+                               placeholder="Количество" class="stock-input" required>
+                        <button type="submit" class="btn-primary btn-small">+ Добавить</button>
+                    </div>
+                </form>
+            </div>
+            {% empty %}
+            <p>У вас пока нет товаров</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <h2>⏳ Активные заказы</h2>
+        <div class="orders-list">
+            {% for order in active_orders %}
+            <div class="order-card">
+                <div class="order-header">
+                    <h3>Заказ #{{ order.id }}</h3>
+                    <select onchange="updateOrderStatus({{ order.id }}, this.value)" class="status-select">
+                        <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Ожидает обработки</option>
+                        <option value="accepted" {% if order.status == 'accepted' %}selected{% endif %}>Принят</option>
+                        <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>В обработке</option>
+                        <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Отправлен</option>
+                        <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Доставлен</option>
+                        <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Отменен</option>
+                    </select>
+                </div>
+                <div class="order-info">
+                    <p><strong>Покупатель:</strong> {{ order.buyer.username }}</p>
+                    {% if order.buyer.phone %}
+                    <p><strong>Телефон:</strong> {{ order.buyer.phone }}</p>
+                    {% endif %}
+                    {% if order.buyer.address %}
+                    <p><strong>Адрес:</strong> {{ order.buyer.address }}</p>
+                    {% endif %}
+                    <p><strong>Товар:</strong> {{ order.product.name }}</p>
+                    <p><strong>Количество:</strong> {{ order.quantity }}</p>
+                    <p><strong>Сумма:</strong> {{ order.total_price }} ₽</p>
+                    <p><strong>Дата заказа:</strong> {{ order.created_at|date:"d.m.Y H:i" }}</p>
+                </div>
+            </div>
+            {% empty %}
+            <p>Нет активных заказов</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <h2>📜 История заказов</h2>
+        <div class="orders-list">
+            {% for order in history_orders %}
+            <div class="order-card order-history">
+                <div class="order-header">
+                    <h3>Заказ #{{ order.id }}</h3>
+                    <span class="order-status status-{{ order.status }}">{{ order.get_status_display }}</span>
+                </div>
+                <div class="order-info">
+                    <p><strong>Покупатель:</strong> {{ order.buyer.username }}</p>
+                    <p><strong>Товар:</strong> {{ order.product.name }}</p>
+                    <p><strong>Количество:</strong> {{ order.quantity }}</p>
+                    <p><strong>Сумма:</strong> {{ order.total_price }} ₽</p>
+                    <p><strong>Дата заказа:</strong> {{ order.created_at|date:"d.m.Y H:i" }}</p>
+                    {% if order.is_received %}
+                    <p class="order-completed">✓ Получен покупателем {{ order.updated_at|date:"d.m.Y H:i" }}</p>
+                    {% elif order.status == 'cancelled' %}
+                    <p class="order-cancelled">✗ Отменён {{ order.updated_at|date:"d.m.Y H:i" }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <p>История пуста</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Загрузка категорий
+fetch('/api/categories/')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.getElementById('productCategory');
+        data.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            select.appendChild(option);
+        });
+    });
+
+function showAddProductForm() {
+    document.getElementById('addProductForm').style.display = 'block';
+}
+
+function hideAddProductForm() {
+    document.getElementById('addProductForm').style.display = 'none';
+}
+
+document.getElementById('productForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    formData.append('name', document.getElementById('productName').value);
+    formData.append('description', document.getElementById('productDescription').value);
+    formData.append('price', document.getElementById('productPrice').value);
+    formData.append('stock', document.getElementById('productStock').value);
+    formData.append('category', document.getElementById('productCategory').value);
+    
+    const imageFile = document.getElementById('productImage').files[0];
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+    
+    fetch('/api/products/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Товар успешно добавлен!');
+        location.reload();
+    })
+    .catch(error => {
+        alert('Ошибка при добавлении товара');
+    });
+});
+
+function updateOrderStatus(orderId, status) {
+    fetch(`/api/orders/${orderId}/update_status/`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ status: status })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Статус заказа обновлен!');
+    })
+    .catch(error => {
+        alert('Ошибка при обновлении статуса');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

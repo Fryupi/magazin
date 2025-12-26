@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Регистрация - Магазин{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h2>Регистрация</h2>
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username">Имя пользователя</label>
+                <input type="text" id="username" name="username" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="user_type">Тип аккаунта</label>
+                <select id="user_type" name="user_type" class="form-input">
+                    <option value="buyer">Покупатель</option>
+                    <option value="seller">Продавец</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-primary btn-full">Зарегистрироваться</button>
+        </form>
+        <p class="auth-link">Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+    </div>
+</div>
+{% endblock %}

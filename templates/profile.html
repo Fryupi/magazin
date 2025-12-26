@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль - Магазин{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <div class="profile-header-top">
+            <h1>Личный кабинет</h1>
+            <a href="{% url 'edit_profile' %}" class="btn-secondary">✏️ Редактировать профиль</a>
+        </div>
+        <div class="profile-info">
+            <p><strong>Имя пользователя:</strong> {{ user.username }}</p>
+            {% if user.first_name or user.last_name %}
+            <p><strong>Полное имя:</strong> {{ user.first_name }} {{ user.last_name }}</p>
+            {% endif %}
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            {% if user.phone %}
+            <p><strong>Телефон:</strong> {{ user.phone }}</p>
+            {% endif %}
+            {% if user.address %}
+            <p><strong>Адрес:</strong> {{ user.address }}</p>
+            {% endif %}
+            <p><strong>Тип аккаунта:</strong> {{ user.get_user_type_display }}</p>
+            <p><strong>Баланс:</strong> <span class="balance-large">{{ user.balance }} ₽</span></p>
+        </div>
+        
+        <!-- Форма пополнения баланса -->
+        <div class="balance-form">
+            <h3>Пополнить баланс</h3>
+            <form method="post" action="{% url 'add_balance' %}" class="add-balance-form">
+                {% csrf_token %}
+                <div class="form-group-inline">
+                    <input type="number" name="amount" step="0.01" min="1" max="1000000" 
+                           placeholder="Сумма" class="form-input" required>
+                    <button type="submit" class="btn-primary">Пополнить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="profile-section">
+        <h2>Корзина</h2>
+        <div class="cart-items">
+            {% for item in cart_items %}
+            <div class="cart-item">
+                <div class="cart-item-info">
+                    <h3>{{ item.product.name }}</h3>
+                    <p>Цена: {{ item.product.price }} ₽</p>
+                    <p>Количество: {{ item.quantity }}</p>
+                    <p><strong>Итого: {{ item.total_price }} ₽</strong></p>
+                </div>
+                <div class="cart-item-actions">
+                    <button onclick="createOrder({{ item.id }})" class="btn-primary">Оформить заказ</button>
+                    <button onclick="removeFromCart({{ item.id }})" class="btn-danger">Удалить</button>
+                </div>
+            </div>
+            {% empty %}
+            <p>Корзина пуста</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="profile-section">
+        <h2>Активные заказы</h2>
+        <div class="orders-list">
+            {% for order in active_orders %}
+            <div class="order-card">
+                <div class="order-header">
+                    <h3>Заказ #{{ order.id }}</h3>
+                    <span class="order-status status-{{ order.status }}">{{ order.get_status_display }}</span>
+                </div>
+                <div class="order-info">
+                    <p><strong>Товар:</strong> {{ order.product.name }}</p>
+                    <p><strong>Продавец:</strong> {{ order.seller.username }}</p>
+                    <p><strong>Количество:</strong> {{ order.quantity }}</p>
+                    <p><strong>Сумма:</strong> {{ order.total_price }} ₽</p>
+                    <p><strong>Дата:</strong> {{ order.created_at|date:"d.m.Y H:i" }}</p>
+                    
+                    {% if order.status == 'delivered' and not order.is_received %}
+                    <div class="order-actions">
+                        <form method="post" action="{% url 'confirm_order_received' order.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-primary">Подтвердить получение</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <p>Нет активных заказов</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="profile-section">
+        <h2>История заказов</h2>
+        <div class="orders-list">
+            {% for order in history_orders %}
+            <div class="order-card order-history">
+                <div class="order-header">
+                    <h3>Заказ #{{ order.id }}</h3>
+                    <span class="order-status status-{{ order.status }}">{{ order.get_status_display }}</span>
+                </div>
+                <div class="order-info">
+                    <p><strong>Товар:</strong> {{ order.product.name }}</p>
+                    <p><strong>Продавец:</strong> {{ order.seller.username }}</p>
+                    <p><strong>Количество:</strong> {{ order.quantity }}</p>
+                    <p><strong>Сумма:</strong> {{ order.total_price }} ₽</p>
+                    <p><strong>Дата:</strong> {{ order.created_at|date:"d.m.Y H:i" }}</p>
+                    {% if order.is_received %}
+                    <p class="order-received">✓ Получен {{ order.updated_at|date:"d.m.Y H:i" }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <p>История пуста</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function createOrder(cartItemId) {
+    if (!confirm('Подтвердите оформление заказа')) return;
+    
+    fetch('/api/orders/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            cart_item_id: cartItemId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert('Заказ успешно оформлен!');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при оформлении заказа');
+    });
+}
+
+function removeFromCart(cartItemId) {
+    if (!confirm('Удалить товар из корзины?')) return;
+    
+    fetch(`/api/cart/${cartItemId}/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(() => {
+        alert('Товар удален из корзины');
+        location.reload();
+    })
+    .catch(error => {
+        alert('Ошибка при удалении товара');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}Главная - Магазин{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>Добро пожаловать в наш магазин!</h1>
+    <p>Найдите лучшие товары по выгодным ценам</p>
+</div>
+
+<div class="search-section">
+    <input type="text" id="searchInput" placeholder="Поиск товаров..." class="search-input">
+    <select id="categoryFilter" class="category-filter">
+        <option value="">Все категории</option>
+        {% for category in categories %}
+            <option value="{{ category.id }}">{{ category.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="products-grid" id="productsGrid">
+    {% for product in products %}
+    <div class="product-card">
+        {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-image">
+        {% else %}
+            <div class="product-image-placeholder">📦</div>
+        {% endif %}
+        <div class="product-info">
+            <h3>{{ product.name }}</h3>
+            <p class="product-price">{{ product.price }} ₽</p>
+            <div class="product-rating">
+                ⭐ {{ product.average_rating|floatformat:1 }}
+            </div>
+            <p class="product-stock {% if product.stock == 0 %}stock-zero{% elif product.stock < 10 %}stock-low{% endif %}">
+                В наличии: {{ product.stock }}
+                {% if product.stock == 0 %}
+                    <span class="stock-badge out-of-stock">Нет в наличии</span>
+                {% elif product.stock < 10 %}
+                    <span class="stock-badge low-stock">Мало</span>
+                {% endif %}
+            </p>
+            <div class="product-actions">
+                <a href="{% url 'product_detail' product.id %}" class="btn-primary">Подробнее</a>
+                {% if user.is_authenticated and user.user_type == 'buyer' %}
+                    {% if product.stock > 0 %}
+                        <button onclick="addToCart({{ product.id }})" class="btn-secondary">В корзину</button>
+                    {% else %}
+                        <button class="btn-secondary btn-disabled" disabled>Нет в наличии</button>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addToCart(productId) {
+    fetch('/api/cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: 1
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.error || 'Ошибка при добавлении в корзину');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert('Товар добавлен в корзину!');
+    })
+    .catch(error => {
+        alert(error.message || 'Ошибка при добавлении в корзину');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.getElementById('searchInput').addEventListener('input', filterProducts);
+document.getElementById('categoryFilter').addEventListener('change', filterProducts);
+
+function filterProducts() {
+    const search = document.getElementById('searchInput').value;
+    const category = document.getElementById('categoryFilter').value;
+    
+    let url = '/api/products/?';
+    if (search) url += `search=${search}&`;
+    if (category) url += `category=${category}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = '';
+            
+            data.forEach(product => {
+                const card = createProductCard(product);
+                grid.appendChild(card);
+            });
+        });
+}
+
+function createProductCard(product) {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.innerHTML = `
+        ${product.image ? `<img src="${product.image}" alt="${product.name}" class="product-image">` : '<div class="product-image-placeholder">📦</div>'}
+        <div class="product-info">
+            <h3>${product.name}</h3>
+            <p class="product-price">${product.price} ₽</p>
+            <div class="product-rating">⭐ ${product.average_rating.toFixed(1)}</div>
+            <p class="product-stock">В наличии: ${product.stock}</p>
+            <div class="product-actions">
+                <a href="/product/${product.id}/" class="btn-primary">Подробнее</a>
+                {% if user.is_authenticated and user.user_type == 'buyer' %}
+                    <button onclick="addToCart(${product.id})" class="btn-secondary">В корзину</button>
+                {% endif %}
+            </div>
+        </div>
+    `;
+    return card;
+}
+</script>
+{% endblock %}

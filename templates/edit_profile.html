@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Редактирование профиля - Магазин{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card" style="max-width: 600px;">
+        <h2>Редактирование профиля</h2>
+        
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="first_name">Имя</label>
+                <input type="text" id="first_name" name="first_name" 
+                       value="{{ user.first_name }}" class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="last_name">Фамилия</label>
+                <input type="text" id="last_name" name="last_name" 
+                       value="{{ user.last_name }}" class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" 
+                       value="{{ user.email }}" class="form-input" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Телефон</label>
+                <input type="tel" id="phone" name="phone" 
+                       value="{{ user.phone }}" class="form-input" 
+                       placeholder="+7 999 123-45-67">
+            </div>
+            
+            <div class="form-group">
+                <label for="address">Адрес доставки</label>
+                <textarea id="address" name="address" rows="3" 
+                          class="form-input" placeholder="Город, улица, дом, квартира">{{ user.address }}</textarea>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary btn-full">Сохранить изменения</button>
+                <a href="{% url 'profile' %}" class="btn-secondary btn-full">Отмена</a>
+            </div>
+        </form>
+        
+        <div class="profile-info-box">
+            <h3>Информация об аккаунте</h3>
+            <p><strong>Имя пользователя:</strong> {{ user.username }}</p>
+            <p><strong>Тип аккаунта:</strong> {{ user.get_user_type_display }}</p>
+            <p><strong>Дата регистрации:</strong> {{ user.date_joined|date:"d.m.Y" }}</p>
+            <p class="info-note">⚠️ Имя пользователя и тип аккаунта изменить нельзя</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

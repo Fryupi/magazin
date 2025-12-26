@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.name }} - Магазин{% endblock %}
+
+{% block content %}
+<div class="product-detail">
+    <div class="product-detail-image">
+        {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}">
+        {% else %}
+            <div class="product-image-placeholder-large">📦</div>
+        {% endif %}
+    </div>
+    <div class="product-detail-info">
+        <h1>{{ product.name }}</h1>
+        <p class="product-category">Категория: {{ product.category.name }}</p>
+        <p class="product-seller">Продавец: {{ product.seller.username }}</p>
+        <div class="product-rating-large">
+            ⭐ {{ product.average_rating|floatformat:1 }} ({{ product.reviews.count }} отзывов)
+        </div>
+        <p class="product-price-large">{{ product.price }} ₽</p>
+        <p class="product-stock-large {% if product.stock == 0 %}stock-zero{% elif product.stock < 10 %}stock-low{% endif %}">
+            В наличии: {{ product.stock }} шт.
+            {% if product.stock == 0 %}
+                <span class="stock-badge out-of-stock">⚠️ Нет в наличии</span>
+            {% elif product.stock < 10 %}
+                <span class="stock-badge low-stock">⚠️ Мало товара</span>
+            {% endif %}
+        </p>
+        <p class="product-description">{{ product.description }}</p>
+        
+        {% if user.is_authenticated and user.user_type == 'buyer' %}
+            {% if product.stock > 0 %}
+            <div class="product-actions-large">
+                <input type="number" id="quantity" value="1" min="1" max="{{ product.stock }}" class="quantity-input">
+                <button onclick="addToCart({{ product.id }})" class="btn-primary">Добавить в корзину</button>
+            </div>
+            {% else %}
+            <div class="product-actions-large">
+                <button class="btn-primary btn-disabled" disabled>Товар отсутствует</button>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<div class="reviews-section">
+    <h2>Отзывы</h2>
+    
+    {% if user.is_authenticated and user.user_type == 'buyer' %}
+    <div class="review-form">
+        <h3>Оставить отзыв</h3>
+        <form id="reviewForm">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Оценка</label>
+                <select id="rating" class="form-input">
+                    <option value="5">⭐⭐⭐⭐⭐</option>
+                    <option value="4">⭐⭐⭐⭐</option>
+                    <option value="3">⭐⭐⭐</option>
+                    <option value="2">⭐⭐</option>
+                    <option value="1">⭐</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Комментарий</label>
+                <textarea id="comment" rows="4" class="form-input" required></textarea>
+            </div>
+            <button type="submit" class="btn-primary">Отправить отзыв</button>
+        </form>
+    </div>
+    {% endif %}
+    
+    <div class="reviews-list">
+        {% for review in reviews %}
+        <div class="review-card">
+            <div class="review-header">
+                <strong>{{ review.user.username }}</strong>
+                <span class="review-rating">{{ review.rating }}⭐</span>
+            </div>
+            <p class="review-date">{{ review.created_at|date:"d.m.Y H:i" }}</p>
+            <p class="review-comment">{{ review.comment }}</p>
+        </div>
+        {% empty %}
+        <p>Пока нет отзывов</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addToCart(productId) {
+    const quantity = document.getElementById('quantity').value;
+    
+    fetch('/api/cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: parseInt(quantity)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Товар добавлен в корзину!');
+    })
+    .catch(error => {
+        alert('Ошибка при добавлении в корзину');
+    });
+}
+
+document.getElementById('reviewForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const rating = document.getElementById('rating').value;
+    const comment = document.getElementById('comment').value;
+    
+    fetch('/api/reviews/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            product: {{ product.id }},
+            rating: parseInt(rating),
+            comment: comment
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.error || 'Ошибка при добавлении отзыва');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert('Отзыв добавлен!');
+        location.reload();
+    })
+    .catch(error => {
+        alert(error.message || 'Ошибка при добавлении отзыва');
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
